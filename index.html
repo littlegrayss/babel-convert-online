@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+    * {
+        padding: 0;
+        margin: 0;
+    }
+    .editor-wrapper {
+        display: flex;
+        flex-direction: row;
+        background: #353634;
+        border: 1px solid #4f504d;
+    }
+    .box {
+        flex: 50%;
+    }
+    .head {
+        color: #b7b8b7;
+        font-size: .875rem;
+        margin: 0;
+        padding: 12px 24px;
+        text-align: center;
+    }
+    .button-wrap {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 120px;
+        height: 26px;
+        display: flex;
+        flex-direction: row;
+        background: #eeda7c;
+        border-radius: 20px;
+        color: #24292e;
+    }
+    .button {
+        flex: 50%;
+        text-align: center;
+        padding: 4px;
+        cursor: pointer;
+        user-select: none;
+        color: #323330;
+        font-weight: 400;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .line {
+        width: 1px;
+        background-color: #999;
+    }
+    .active {
+        color: #24292e;
+        font-weight: 600;
+    }
+    #editor { 
+        width: 100%;
+        height: 600px;
+        border: 1px solid #4f504d;
+    }
+    #readOnlyEditor { 
+        width: 100%;
+        height: 600px;
+        border: 1px solid #4f504d;
+    }
+    </style>
+</head>
+<body>
+    <div class="editor-wrapper">
+        <div class="box">
+            <h3 class="head">source</h3>
+            <div id="editor"></div>
+        </div>
+        <div class="box">
+            <div style="position: relative;">
+                <h3 class="head">s</h3>
+                <div class="button-wrap">
+                    <span class="button" onclick="change(event)" data-type="es5">es5</span>
+                    <span class="line"></span>
+                    <span class="button" onclick="change(event)" data-type="ast">ast</span>
+                </div>
+            </div>
+            
+            <div id="readOnlyEditor"></div>
+        </div>
+    </div>
+    
+    <script src="js/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/mode-javascript.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/theme-tomorrow_night.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/babel.min.js" type="text/javascript" charset="utf-8"></script>
+    <script>
+        var code = ''
+        var ast = ''
+        var editor = ace.edit("editor", {
+            highlightActiveLine: false,
+            mode: 'ace/mode/javascript',
+            theme: 'ace/theme/tomorrow_night',
+            readOnly: false,
+            fontSize: 16,
+            showGutter: false,
+            showLineNumbers: false,
+            useSoftTabs: false,
+            tabSize: 2,
+            useWorker: false,
+            wrap: false,
+            animatedScroll: true
+        });
+        editor.renderer.setPadding(24)
+        editor.renderer.setScrollMargin(24, 24)
+
+        var readOnlyEditor = ace.edit("readOnlyEditor", {
+            highlightActiveLine: false,
+            mode: 'ace/mode/javascript',
+            theme: 'ace/theme/tomorrow_night',
+            readOnly: true,
+            fontSize: 16,
+            showGutter: true,
+            showLineNumbers: false,
+            useSoftTabs: false,
+            tabSize: 2,
+            useWorker: false,
+            wrap: false,
+            animatedScroll: true
+        });
+        readOnlyEditor.renderer.setPadding(24)
+        readOnlyEditor.renderer.setScrollMargin(24, 24)
+        console.log(Babel);
+
+        editor.session.on('change', debounce(function() {
+            var value = editor.getValue();
+            var convertValue = '';
+
+            try {
+                convertValue = Babel.transform(value, {
+                    presets: ["es2015", "es2016", "es2017"],
+                    ast: true,
+                    code: true
+                })
+                console.log(convertValue);
+            } catch (e) {
+                err = e.message,
+                readOnlyEditor.setValue(err)
+                console.log(err);
+                return
+            }
+            code = convertValue.code.replace(/['|"]use strict['|"];(\n\n)?/g, "")  // es6
+            ast = JSON.stringify(convertValue.ast, null, 4)  // ast
+
+            readOnlyEditor.setValue(code, -1)
+        }, 500));
+        
+        function debounce(fn) {
+            var wait = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 200;
+            var now = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+            let __timer = null;
+            return function () {
+                var _this = this
+
+                for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+                    args[_key] = arguments[_key];
+                }
+
+                if (!__timer && now) {
+                    fn.apply(this, args);
+                }
+                
+                if (__timer) clearTimeout(__timer);
+                __timer = setTimeout(function() {
+                    fn.apply(_this, args);
+                }, wait);
+            };
+        };
+
+        function change(e) {
+            console.log(e);
+            let type = e.target.dataset.type
+            if (type == 'es5') {
+                readOnlyEditor.setValue(code, -1)
+            } else if (type == 'ast') {
+                readOnlyEditor.setValue(ast, -1)
+            }
+        }
+    </script>
+</body>
+</html>
